@@ -17,7 +17,7 @@ public:
     void initCSP();
     void initCSV();
     void initCST();
-    void sync();
+    void sync(int32_t *lastPos = NULL, int32_t *lastPosnew = NULL);
 
     void moveToPosition(uint32_t *posList, uint8_t len);
     void getVersions(uint16_t *hardware_version, uint16_t *application_number, uint16_t *software_version, uint16_t *application_version);

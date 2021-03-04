@@ -14,6 +14,7 @@ uint8_t tmp_len;
 uint32_t tmp_id;
 uint8_t tmp_type;
 
+
 epos4::epos4(int canid_epos, int canid_self, mcp2515_can *CAN_INTERFACE)
 {
     _canid_epos = canid_epos;
@@ -187,7 +188,7 @@ void epos4::initCST()
     delay(10); 
 }
 
-void epos4::sync()
+void epos4::sync(int32_t *lastPos, int32_t *lastPosnew)
 {
     epos4::_can_interface->sendMsgBuf(0x80, 0, 1, 0x00);
 
@@ -199,20 +200,23 @@ void epos4::sync()
         if(tmp_id == 0x181)
         {
             int32_t *ptr = (int32_t *)tmp_data;
-            
+            *lastPos = *lastPosnew;
+            *lastPosnew = 0 - (*ptr);
+
+
             char buffer[10] = {0};
             sprintf(buffer, "%li", *ptr);
-            Serial.print("Position: ");
+            Serial.print(" Position: ");
             Serial.print(buffer);
-            Serial.print(" ");
+            Serial.println(" ");
 
 
-            int32_t *ptr1 = (int32_t *)(tmp_data + 4);
-
-            char buffer1[10] = {0};
-            sprintf(buffer1, "%li", ((*ptr1) * 10));
-            Serial.print("Velocity: ");
-            Serial.println(buffer1);
+            // int32_t *ptr1 = (int32_t *)(tmp_data + 4);
+            // 
+            // char buffer1[10] = {0};
+            // sprintf(buffer1, "%li", ((*ptr1) * 10));
+            // Serial.print("Velocity: ");
+            // Serial.println(buffer1);
         }
 
     }
