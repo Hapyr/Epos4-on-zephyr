@@ -1,3 +1,5 @@
+**Over the past six months, we have refined our documentation for intere purposes and made it more detailed. This will be published in the next few weeks. **
+
 # epos4
 
 This project allows the control of one or more EPOS4 motor controllers from Maxon via CAN. 
