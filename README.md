@@ -1,51 +1,55 @@
-**Over the past six months, we have refined our documentation for intere purposes and made it more detailed. This will be published in the next few weeks.**
-# epos4
+# Epos4 on Zephyr
 
-This project allows the control of one or more EPOS4 motor controllers from Maxon via CAN. 
+This project enables the control of one or more EPOS4 motor controllers from Maxon via CAN. 
 
-The control can be done via a microcontroller with CAN interface. In this project, an Arduino example (Arduino Uno and MEGA) and a Zephyr project were implemented. Zephyr was run on a STM32F407G-DISC1 with an external CAN transiever. 
-For easier handling with CAN, a C++ class was implemented that provides various functions to communicate with the EPOS4. The class was adapted for Arduino and Zephyr. 
+The control can be done via a microcontroller with CAN interface. In the current version the libary is only implemented for Zephyr. In the past the project was also run on an Arduino. Please have a look at the first release. Zephyr was run on a STM32F407G-DISC1 with an external CAN transiever. 
+For an easier handling with CAN a C++ class was implemented, which provides different functions to communicate with the EPOS4. 
 
-## arduino-seeed implementation
+For copyright reasons there is no public detailed documentation about the project. Most of the code is commented inline. Especially the examples. 
+Since the lib was developed for Zephyr it is recommended to have some experience with it. Furthermore you should be familiar with the CAN interface of EPOS4. The documents added here can help. 
 
-Libary for the Arduino (tested on the Arduino UNO 8 bit) with the CAN-BUS Shield V2.0 with the MCP2515. The attached mcp2515_can.h and mcp2515_can_dfs.h were used.
+## General
+Zephyr version 3.1.0 was used in the project. A Zephyr installation is required to use the code.
 
-Implemented are different PDO and SDO send functions. For the state machine of the EPOS4 the epos4::init() was written, which queries the current state and switches on the EPOS4 accordingly.
+For a specific version you can call `west init` as follows:
+```
+west init -m https://github.com/zephyrproject-rtos/zephyr --mr zephyr-v3.1.0 <ZEPHYR_PROJECT_PATH>
+```
 
-For the "Profile Position Mode" (PPM), the "Cyclic Synchronous Position Mode" (CSP), the "Cyclic Synchronous Velocity Mode" (CSV) and the "Cyclic Synchronous Torque Mode" init functions were written and test functions were provided in the .ino file. Depending on the test function (or use of own functions) the corresponding mode must be initialized before.
+The Epos4 works in different operating modes. Of these, an interface has been implemented for "profile position mode" (PPM), "cyclic synchronous position" (CSP), "cyclic synchronous velocity" (CSV) and "cyclic synchronous torque" (CST). Check the `epos4.h` for more information. 
 
-When initializing the epos4 object the configPDO function is called which sets the TxPDOs and RxPDOs according to the variables in the epos4.h file.
+There are 3 different applications in Examples. 
 
-In the example, note that no interraupts were used for the timing of the synchronisation except for the cst_test function. 
+1. **epos_basic** is an example application where the EPOS is operated in CST mode. It receives a predefined sequence of torques.
 
-In general, the libary for the arduino contains the same functionality as the zephyr implementation. The only difference is the function to send a CAN frame. In a future generalisation, a call back function could be defined which implements this functionality outside the libary. 
+2. **epos_matlab** is also an example application in CST mode. Instead of an arbitrary sequence, the EPOS is operated here in a closed control loop. The manipulated variables are calculated using a model that was created in Simulink and generated with the Simulink code to C code.
 
-## zephyr implementation
+3. **epos_parameter_identification** is also an example application in CST mode. Here a torque trajectory is specified. The initial position or speed is measured and all relevant data is sent via the UART interface. This way the hardware can be identified.
 
-Generally, the same applies as described in the Arduino section. The implementation on zephyr is an extension.
+**epos_matlab** is described in more detail below:
+Zephyr is an open-source real-time operating system developed by the Linux Foundation for the IoT domain.  More information and a detailed documentation can be found at: https://docs.zephyrproject.org/latest/ For an easy start into the development I recommend to reprogram an introductory tutorial from the docs.
 
-There are 3 different applications in epos4_zephyr. 
+Since Zephyr uses cmake, the compiling information is specified via the [CMakeLists.txt](Examples/epos_matlab/CMakeLists.txt). There, among other things, the EPOS4 library and all C-generated files from Simulink are made known to the compiler. 
+Simulink generates the files depending on the name of the respective subsystem. If the CMakeLists is not to be processed, care must be taken to name the corresponding subsystem in Simulink in the same way.
 
-1. **epos_controller** is the main application and shows exemplarily how a subsystem (named Atmoic) from Simulink (code generated in C without MAT file logging) can be integrated into a closed loop. An example without a subsystem of Simulink is given in main.cpp. This code shows how the library can be used to control the epos4 motor driver. There, however, no interrupt functionality was implemented but only the PPM mode was used (see epos4::moveToPosition). For the cyclic sync modes, see pos_controller.cpp to understand how interrupts were used for the timing of the sync. 
+The Simulink subsystem was compiled in C using the Simulink coder. It is also possible to compile in C++, but then Simulink uses classes and the sample code must be adapted accordingly. 
+In general, please note that logging for code generation must be switched off (MAT file logging). The STM32 cannot write to files by default. 
+When Simulink generates C code, be sure to set the configuration `CONFIG_CPLUSPLUS=y` in the [prj.conf](epos4_zephyr/epos_conrtoller/prj.conf) and to include the libary as follows to avoid the include c++ mangle:
+```c++
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+#include "Atomic.h"
+#ifdef __cplusplus
+}
+#endif
+```
 
-2. **epos_controller_mcp2515** Provides the same functionality. However, instead of the onboard CAN devices of the STM32F407G, it uses the Arduino Shield MCP2515 which is controlled via SPI. 
+The CAN interface of the STM32 was managed by the [stm32f4_disco.overlay](epos4_zephyr/epos_conrtoller/stm32f4_disco.overlay) devicetree extension.
 
-3. **epos_controller_model** only shows an integration of a Simulink subsystem in C. 
-
-**epos_controller** is described in more detail below:
-Zephyr is an open source real-time operating system developed by the Linux Foundation for the IoT domain. 
-More information and detailed documentation can be found at https://docs.zephyrproject.org/latest/.
-For an easy start into the development, I recommend reprogramming an introductory tutorial from the docs. 
-
-Since Zephyr uses cmake, the compiling information is given in the [CMakeLists.txt](epos4_zephyr/epos_conrtoller/CMakeLists.txt). Among other things, the EPOS4 library and all C-generated files from Simulink are made known to the compiler there. 
-Simulink generates the files depending on the name of the respective subsystem. If the CMakeLists are not to be edited, make sure that the corresponding subsystem is named the same in Simulink. 
-
-The CAN interface of the STM32 was managed via the [stm32f4_disco.overlay](epos4_zephyr/epos_conrtoller/stm32f4_disco.overlay) Devicetree extension. 
-
-Simulink libarys needed to run the simulink code generation are not available here. 
-
-# collection of important commands
-## compile and flash
+# Collection of important commands
+## Compile and flash
 First, `west` and `zephyr` must be installed. Read about this at `https://docs.zephyrproject.org/latest/getting_started/index.html`.
 
     west build -b <bord_name> <project_folder>
@@ -53,14 +57,16 @@ First, `west` and `zephyr` must be installed. Read about this at `https://docs.z
 for certain changes, the >build< folder must be deleted before the build. You can read more about this in the zephyr docs.
 So far the board `stm32f4_disco` was used in the project
 
-## Plotter with virtual environment
-The plotter can be used to plot data that is sent from the controller to the pc via uart.
+## Plotter
+The plotter makes it possible to display and evaluate the data sent via CAN to the microcontroller via uart on the PC. The data can be displayed graphically or written to files. This allows e.g. a parameter identification. 
+
+### Virtual environment
 If necessary, the virtual environment must be started first. 
 
     source venv/bin/activate
 then the plotter can be started with:
 
-    python3 pythonploter2.py
+    python3 plotter.py
 
 ## Device trees
 Information about the board and its hardware can be changed and learned via the Zephyr device trees. 
@@ -75,5 +81,5 @@ Also the interrupt frequency for sending the sync frame must be adjusted to the 
 
 # Note
 If you have any questions, criticism, suggestions or ideas for improvement, please feel free to contact us. A more detailed code documentation will also be written to simplify the use. 
-The code was developed as part of a project at RWTH Aachen University. Some content cannot be presented here for legal reasons. For more information, please contact jakob.gebler@rwth-aachen.de. 
+The code was developed as part of a project at Medit - RWTH Aachen University. Some content cannot be presented here for legal reasons. For more information, please contact jakob.gebler@rwth-aachen.de. 
 The use is on own guarantee, I take over no responsibility with the use of the Libary.

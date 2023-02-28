@@ -1,8 +1,0 @@
-{
-    "board": "arduino:avr:mega",
-    "programmer": "AVR ISP",
-    "sketch": "examples/example/example.ino",
-    "port": "/dev/ttyUSB0",
-    "prebuild": "sh prebuild.sh",
-    "configuration": "cpu=atmega2560"
-}
